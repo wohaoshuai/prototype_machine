@@ -13,9 +13,52 @@
 //  Copyright © 2017 AlienRobotCat. All rights reserved.
 //
 
+// Goal
+// 1.the tranformed code must be readable
+// 2.the code must be portable for most devices
+
+// Format
+// ??? 1 question
+
+// Helper
+// [r]
+// set up recognizer
+// [l]
+// set up linker
+
+// Things Black - 262B35 - UIColor(red:0.15, green:0.17, blue:0.21, alpha:1.0)
+// Things While - FFFFFF
+// Things Blue - 9EC6FF
+// Things Green - 5DC8AA
+// Things Grey - 80868D
+
 import UIKit
 
+extension UIImageView{
+    func createDefaultImage(){
+        self.frame = CGRect(x: 100, y: 100, width: 300, height: 300)
+        self.center = CGPoint(x: 200, y: 200)
+        if let i = image{
+            print(i.scale)
+            print(i.size)
+            print("hello world")
+        }
+    }
+}
+
+extension UILabel{
+    func createDefaultLabel(){
+        //self.center = CGPoint(x: 200, y: 200)
+        self.frame = CGRect(x: 100, y: 100, width: 300, height: 300)
+    }
+}
+
 extension UIView{
+    
+    func createDefault(){
+        self.frame = CGRect(x: 100, y: 100, width: 293, height: 117)
+        self.backgroundColor = UIColor(red:0.15, green:0.17, blue:0.21, alpha:1.0)
+    }
     
     func createFrame(tag: Int){
         let view = UIView()
@@ -37,6 +80,15 @@ extension UIView{
         return r
     }
     
+    func displayTag(){
+        let tagView = UILabel()
+        self.clipsToBounds = false
+        tagView.text = String(tag)
+        tagView.frame = CGRect(x: 0, y: -30, width: 100, height: 30)
+        self.addSubview(tagView)
+    }
+    
+    
     private func findSubview(v: UIView, t: Int)->UIView?{
         if v.tag == t {
             return v
@@ -53,30 +105,131 @@ extension UIView{
     }
 }
 
+class Linker {
+    var sensor: Int?
+    var receiver: Int?
+    
+    func is_full() -> Bool {
+        if receiver != nil && sensor != nil{
+            return true
+        } else {
+            return false
+        }
+    }
+    
+}
+
 class ViewController: UIViewController {
     
+    // data 1
+    var linker_cache : [Linker] = []
+    // return tag id of a view -> ??? why not return UIView as result to std it ???
+    func findTargetWithIndex(tag: Int) -> Int?{
+        for l in linker_cache{
+            if l.is_full() && l.sensor == tag{
+                return l.receiver
+            }
+        }
+        return nil
+    }
+    
+    // data 2
+    var view_cache : [UIView] = []
+    func findWithIndex(tag: Int) -> UIView?{
+        for c in view_cache{
+            if c.tag == tag{
+                return c
+            }
+        }
+        return nil
+    }
+    
     override func viewDidLoad() {
+        // default setup
+        var v: UIView?
+        var r: UIGestureRecognizer!
+        var l: Linker!
         super.viewDidLoad()
         
-        view.createFrame(tag: 1)
-        print(view.frame.size)
-        
+        // create 0
+        view.tag = 0
         view.backgroundColor = UIColor(red:0.94, green:0.94, blue:0.96, alpha:1.0)
         
-        let r = UIPanGestureRecognizer()
+        // create 1
+        view.createFrame(tag: 1)
+        print(view.frame.size)
+        v = view.findSubviewWithTag(tag: 1)
+        v?.addShadow()
+        v?.displayTag()
+
+        // linker 1
+        r = UIPanGestureRecognizer()
         r.addTarget(self, action: #selector(self.mover(_:)))
         view.findSubviewWithTag(tag: 1)?.addGestureRecognizer(r)
         
-        let v = view.findSubviewWithTag(tag: 1)
-        v?.addShadow()
+        // create 2
+        createDefault(tag: 2)
+        if let v = findWithIndex(tag: 2){
+            view.addSubview(v)
+            v.displayTag()
+        }
         
+        // linker 2
+        r = UIPanGestureRecognizer()
+        r.addTarget(self, action: #selector(self.mover(_:)))
+        view.findSubviewWithTag(tag: 2)?.addGestureRecognizer(r)
         
+        // linker 3
+        // r
+        r = UIPanGestureRecognizer()
+        r.addTarget(self, action: #selector(self.scaler(_:)))
+        view.findSubviewWithTag(tag: 0)?.addGestureRecognizer(r)
+        // l
+        l = Linker()
+        l.sensor = 0
+        l.receiver = 2
+        linker_cache.insert(l, at: 0)
+
+        // create 3
+        v = UIImageView(image: UIImage(named: "image_1"))
+        (v as! UIImageView).createDefaultImage()
+        v?.tag = 3
+        v?.displayTag()
+        view_cache.insert(v!, at: 0)
+        view.addSubview(v!)
+        // r
+        r = UIPanGestureRecognizer()
+        r.addTarget(self, action: #selector(self.mover(_:)))
+        view.findSubviewWithTag(tag: 3)!.addGestureRecognizer(r)
+        
+    }
+    
+
+    
+    // create default view with a tag
+    func createDefault(tag: Int) -> UIView {
+        let m = UIView()
+        m.createDefault()
+        m.tag = tag
+        view_cache.insert(m, at: 0)
+        return m
     }
     
     var h0 = CGFloat(0)
     var w0 = CGFloat(0)
+
+    // of whom to scale is the question
+    
+    // actor on view based on gesture
     func scaler(_ sender: UIPanGestureRecognizer){
-        if let v = view.findSubviewWithTag(tag: 1){
+        
+        var tag = sender.view?.tag
+        if let target = findTargetWithIndex(tag: tag!){
+            print("ffffffffffff")
+            tag = target
+        }
+
+        if let v = view.findSubviewWithTag(tag: tag!){
             if sender.state == UIGestureRecognizerState.began {
                 print("begin")
                 h0 = v.frame.size.height
@@ -107,17 +260,20 @@ class ViewController: UIViewController {
         }
     }
     
-    
+    // of whom to move is a question
     func mover(_ sender: UIPanGestureRecognizer){
-        if let v = view.findSubviewWithTag(tag: 1){
+        // CCC
+        var tag = sender.view?.tag
+        if let target = findTargetWithIndex(tag: tag!){
+            tag = target
+        }
+        
+        if let v = view.findSubviewWithTag(tag: tag!){
             v.center.x += sender.translation(in: self.view).x
             v.center.y += sender.translation(in: self.view).y
-            
             sender.setTranslation(CGPoint(x: 0, y: 0), in: self.view)
         }
     }
-    
-    
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
